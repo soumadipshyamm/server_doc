@@ -28,19 +28,11 @@ This assumes:
      DocumentRoot /var/www/html/Construction-app-admin/public
    
      ```
-   This <Directory> block is added inside the <VirtualHost *:80> (or *:443 for HTTPS) section of your Apache virtual host configuration file. Here's the full context for clarity, assuming you're editing /etc/apache2/sites-available/000-default.conf (or your custom site config like staging.koncite.com.conf):
    - Also ensure the `<Directory>` block matches (update it if present):
      ```
    <VirtualHost *:80>
     ServerName staging.koncite.com
     DocumentRoot /var/www/html/Construction-app-admin/public
-
-    <Directory /var/www/html/Construction-app-admin/public>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-
     # Other directives like ErrorLog, CustomLog, etc., can go here if needed
 </VirtualHost>
      ```
