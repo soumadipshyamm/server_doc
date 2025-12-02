@@ -1,0 +1,90 @@
+To change the URL from `http://staging.koncite.com/Construction-app-admin/public/company/login` to `http://staging.koncite.com/company/login` on an Azure VM (assuming a Linux-based setup with Apache, as this is common for PHP/Laravel apps), you'll need to adjust the web server's document root to point directly to the `public` folder inside your app's directory. This removes the `/Construction-app-admin/public/` prefix from the visible URL while keeping the app functional.
+
+This assumes:
+- Your app (e.g., Laravel) is deployed in `/var/www/html/Construction-app-admin/` (adjust paths if different).
+- You're using Apache (if using Nginx, reply for alternative steps).
+- You have SSH access to the Azure VM with sudo privileges.
+
+### Step-by-Step Instructions via Command Line
+
+1. **SSH into your Azure VM**:
+   ```
+   ssh username@your-vm-ip-or-hostname
+   ```
+   Replace `username` and the connection details with your Azure VM specifics (find them in the Azure portal under your VM's "Connect" section).
+
+2. **Locate and edit the Apache virtual host config**:
+   - Navigate to the sites-available directory:
+     ```
+     sudo nano /etc/apache2/sites-available/000-default.conf
+     ```
+     (Or if you have a custom site config like `staging.koncite.com.conf`, edit that instead: `sudo find /etc/apache2 -name "*koncite*" -type f` to search for it.)
+   - In the `<VirtualHost *:80>` block (or `*:443` for HTTPS), find the `DocumentRoot` line. It likely looks like:
+     ```
+     DocumentRoot /var/www/html
+     ```
+   - Change it to point to your app's `public` folder:
+     ```
+     DocumentRoot /var/www/html/Construction-app-admin/public
+   
+     ```
+   This <Directory> block is added inside the <VirtualHost *:80> (or *:443 for HTTPS) section of your Apache virtual host configuration file. Here's the full context for clarity, assuming you're editing /etc/apache2/sites-available/000-default.conf (or your custom site config like staging.koncite.com.conf):
+   - Also ensure the `<Directory>` block matches (update it if present):
+     ```
+   <VirtualHost *:80>
+    ServerName staging.koncite.com
+    DocumentRoot /var/www/html/Construction-app-admin/public
+
+    <Directory /var/www/html/Construction-app-admin/public>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    # Other directives like ErrorLog, CustomLog, etc., can go here if needed
+</VirtualHost>
+     ```
+   - Save and exit (Ctrl+O, Enter, Ctrl+X in nano).
+
+3. **Enable necessary Apache modules** (if not already):
+   ```
+   sudo a2enmod rewrite
+   sudo systemctl restart apache2
+   ```
+
+4. **Test the configuration**:
+   ```
+   sudo apache2ctl configtest
+   ```
+   If it says "Syntax OK", proceed. Otherwise, fix any errors shown.
+
+5. **Restart Apache to apply changes**:
+   ```
+   sudo systemctl restart apache2
+   ```
+
+6. **Verify**:
+   - Visit `http://staging.koncite.com/company/login` in a browser. It should now load without the `/Construction-app-admin/public/` prefix.
+   - Check Apache logs for issues: `sudo tail -f /var/log/apache2/error.log`.
+
+### Alternative: Quick .htaccess Method (No Config Edit Needed)
+If you can't edit the vhost (e.g., limited access), add a rewrite rule in the root directory:
+```
+sudo nano /var/www/html/.htaccess
+```
+Add:
+```
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/Construction-app-admin/public/
+RewriteRule ^(.*)$ /Construction-app-admin/public/$1 [L]
+```
+Save, then restart Apache as in step 5. This proxies requests to the subfolder without changing the document root.
+
+### Notes
+- If your app uses HTTPS, update the `*:443` block similarly and ensure SSL is configured.
+- For production, avoid the .htaccess method—use document root changes for better performance/security.
+- If this is Azure App Service (not a VM), use the Azure portal's Configuration > Path mappings instead (no CLI needed).
+- Backup your config first: `sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/000-default.conf.bak`.
+- If errors occur (e.g., permission issues), run `sudo chown -R www-data:www-data /var/www/html/Construction-app-admin` and `sudo chmod -R 755 /var/www/html/Construction-app-admin`.
+
+If this doesn't match your setup (e.g., Nginx, different paths, or App Service), provide more details like your web server type or error logs!
